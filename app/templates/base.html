@@ -59,6 +59,20 @@
         {% block top_actions %}{% endblock %}
       </div>
     </header>
+    {% set toast = request.query_params.get("toast") %}
+{% set toast_type = request.query_params.get("toast_type") or "info" %}
+{% if toast %}
+  <div class="toast toast-{{ toast_type }}" role="status" aria-live="polite">
+    {{ toast }}
+  </div>
+  <script>
+    setTimeout(() => {
+      const t = document.querySelector('.toast');
+      if (t) t.classList.add('hide');
+    }, 2200);
+  </script>
+{% endif %}
+
 
     <!-- ===== Dashboard layout: sidebar + content ===== -->
     <div class="layout">
