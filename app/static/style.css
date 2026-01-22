@@ -4,8 +4,9 @@
   --panel-2: #0f172a;
   --text: #e5e7eb;
   --muted: #9ca3af;
-  --border: rgba(255,255,255,0.08);
+  --border: rgba(255,255,255,0.10);
   --accent: #60a5fa;
+  --accent-2: rgba(96,165,250,0.18);
 }
 
 *{ box-sizing:border-box; }
@@ -18,7 +19,9 @@ body{
   color: var(--text);
 }
 
+/* Links: nooit paars na klik */
 a{ color: inherit; text-decoration: none; }
+a:visited{ color: inherit; }
 
 .sr-only{
   position:absolute;
@@ -29,54 +32,7 @@ a{ color: inherit; text-decoration: none; }
   white-space:nowrap; border:0;
 }
 
-/* ===== Layout ===== */
-
-.layout{
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  min-height: calc(100vh - 56px);
-}
-
-.sidebar{
-  background: rgba(15,23,42,0.85);
-  border-right: 1px solid var(--border);
-  padding: 16px;
-}
-
-.nav{
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.nav a{
-  color: #cbd5e1;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
-}
-
-.nav a:hover{
-  background: rgba(255,255,255,0.05);
-  border-color: var(--border);
-}
-
-.nav a.active{
-  background: rgba(96,165,250,0.15);
-  border-color: rgba(96,165,250,0.35);
-  color: var(--text);
-  font-weight: 650;
-}
-
-.container{
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 18px 16px 32px;
-}
-
 /* ===== Topbar ===== */
-
 .topbar{
   position: sticky;
   top: 0;
@@ -88,7 +44,6 @@ a{ color: inherit; text-decoration: none; }
   background: rgba(17,24,39,0.85);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
-  height: 56px;
 }
 
 .topbar-left{
@@ -102,12 +57,6 @@ a{ color: inherit; text-decoration: none; }
   font-weight: 800;
   letter-spacing: .2px;
   white-space: nowrap;
-}
-
-.topbar-right{
-  display:flex;
-  align-items:center;
-  gap: 10px;
 }
 
 .shop-switcher select{
@@ -124,89 +73,168 @@ a{ color: inherit; text-decoration: none; }
   box-shadow: 0 0 0 3px rgba(96,165,250,0.15);
 }
 
-/* ===== Page header ===== */
+.topnav{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 
+.topnav a,
+.topnav a:visited{
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  color: var(--muted);
+}
+
+.topnav a:hover{
+  color: var(--text);
+  background: rgba(255,255,255,0.05);
+  border-color: var(--border);
+}
+
+.topnav a.active{
+  color: var(--text);
+  background: var(--accent-2);
+  border-color: rgba(96,165,250,0.35);
+}
+
+.topnav a.disabled{
+  opacity: .45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ===== Layout: sidebar links + content rechts ===== */
+.layout{
+  display:grid;
+  grid-template-columns: 240px 1fr;
+  min-height: calc(100vh - 56px); /* topbar ~56px */
+}
+
+.sidebar{
+  background: rgba(15,23,42,0.75);
+  border-right: 1px solid var(--border);
+  padding: 16px;
+}
+
+.nav{
+  display:flex;
+  flex-direction: column;   /* dit is de key: altijd verticaal */
+  gap: 10px;
+}
+
+.nav a,
+.nav a:visited{
+  display:flex;
+  align-items:center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+}
+
+.nav a:hover{
+  background: rgba(255,255,255,0.06);
+}
+
+.nav a.active{
+  background: var(--accent-2);
+  border-color: rgba(96,165,250,0.35);
+  font-weight: 700;
+}
+
+.nav a.disabled{
+  opacity: .45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ===== Main content ===== */
+.container{
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 18px 16px 32px;
+}
+
+/* ===== Page header / actions (handig voor later) ===== */
 .page-header{
   display:flex;
-  align-items:flex-start;
+  align-items:center;
   justify-content:space-between;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 14px;
-}
-
-.page-header h1{
-  margin: 0 0 6px 0;
-  font-size: 22px;
-}
-
-.muted{
-  color: var(--muted);
-  font-size: 13px;
-  margin: 0;
 }
 
 .actions{
   display:flex;
   gap: 8px;
-  align-items:center;
+  flex-wrap: wrap;
 }
-
-/* ===== Buttons ===== */
 
 .btn{
   border: 1px solid var(--border);
   background: rgba(255,255,255,0.04);
   color: var(--text);
-  padding: 9px 12px;
-  border-radius: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: opacity .15s ease, transform .05s ease, border-color .15s ease;
 }
 
-.btn:hover{
-  opacity: 0.9;
-  border-color: rgba(255,255,255,0.16);
-}
-
-.btn:active{
-  transform: translateY(1px);
-}
+.btn:hover{ background: rgba(255,255,255,0.07); }
 
 .btn.primary{
-  background: rgba(96,165,250,0.18);
-  border-color: rgba(96,165,250,0.45);
+  background: var(--accent-2);
+  border-color: rgba(96,165,250,0.35);
 }
 
-/* ===== Table ===== */
-
+/* ===== Orders table ===== */
 .table-wrap{
-  overflow-x: auto;
-  background: rgba(17,24,39,0.55);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 6px;
+  overflow-x:auto;
 }
 
 table{
   width:100%;
   border-collapse: collapse;
-  border-radius: 12px;
+  background: rgba(17,24,39,0.60);
+  border: 1px solid var(--border);
+  border-radius: 14px;
   overflow:hidden;
+}
+
+thead th{
+  font-size: 13px;
+  color: var(--muted);
+  background: rgba(15,23,42,0.85);
 }
 
 th, td{
   text-align:left;
   padding: 12px 12px;
   border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-thead th{
-  font-size: 13px;
-  color: var(--muted);
-  background: rgba(15,23,42,0.75);
 }
 
 tbody tr:hover{
   background: rgba(255,255,255,0.03);
+}
+
+/* ===== Responsive: sidebar inklappen naar boven ===== */
+@media (max-width: 900px){
+  .layout{
+    grid-template-columns: 1fr;
+  }
+  .sidebar{
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav{
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .nav a{
+    width: auto;
+  }
 }
