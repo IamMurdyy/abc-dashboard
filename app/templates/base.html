@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>ABC Dashboard</title>
+    <title>{% block title %}ABC Dashboard{% endblock %}</title>
 
     <link rel="stylesheet" href="/static/style.css" />
 
@@ -16,15 +16,72 @@
   </head>
 
   <body>
+    <!-- ===== Topbar (globaal) ===== -->
     <header class="topbar">
-      <div class="brand">ABC Dashboard</div>
-      <nav class="nav">
-        <a href="/orders">Orders</a>
-      </nav>
+      <div class="topbar-left">
+        <div class="brand">ABC Dashboard</div>
+
+        <!-- Shop switcher -->
+        <div class="shop-switcher">
+          <label class="sr-only" for="shop">Shop</label>
+          <select
+            id="shop"
+            name="shop"
+            onchange="if(this.value){ window.location.href = this.value; }"
+          >
+            {# Verwacht: shops = [{key:'abc-led', name:'ABC-LED', href:'/orders?shop=abc-led'}, ...] #}
+            {% if shops %}
+              {% for s in shops %}
+                <option value="{{ s.href }}" {% if active_shop == s.key %}selected{% endif %}>
+                  {{ s.name }}
+                </option>
+              {% endfor %}
+            {% else %}
+              <option value="/orders" selected>ABC-LED</option>
+            {% endif %}
+          </select>
+        </div>
+
+        <!-- Top tabs (globaal) -->
+        <nav class="topnav" aria-label="Hoofdmenu">
+          <a
+            href="/orders{% if active_shop %}?shop={{ active_shop }}{% endif %}"
+            class="{% if active_page == 'orders' %}active{% endif %}"
+          >Orders</a>
+
+          <!-- later -->
+          <a href="#" class="disabled" title="Komt later">Products</a>
+          <a href="#" class="disabled" title="Komt later">Tools</a>
+        </nav>
+      </div>
+
+      <div class="topbar-right">
+        {% block top_actions %}{% endblock %}
+      </div>
     </header>
 
-    <main class="container">
-      {% block content %}{% endblock %}
-    </main>
+    <!-- ===== Dashboard layout: sidebar + content ===== -->
+    <div class="layout">
+      <aside class="sidebar">
+        <nav class="nav" aria-label="Shop menu">
+          {# Shop-specifieke links (nu vooral ABC-LED) #}
+          <a
+            href="/orders{% if active_shop %}?shop={{ active_shop }}{% endif %}"
+            class="{% if active_page == 'orders' %}active{% endif %}"
+          >Orders</a>
+
+          <!-- later: shop-specifieke pagina's -->
+          <a href="#" class="disabled" title="Komt later">Picklijsten</a>
+          <a href="#" class="disabled" title="Komt later">Voorraad</a>
+          <a href="#" class="disabled" title="Komt later">Rapporten</a>
+          <a href="#" class="disabled" title="Komt later">Instellingen</a>
+        </nav>
+      </aside>
+
+      <main class="container">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+
   </body>
 </html>
