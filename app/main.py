@@ -12,3 +12,7 @@ app.include_router(orders_router)
 @app.get("/")
 def root():
     return RedirectResponse(url="/orders")
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
