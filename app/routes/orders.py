@@ -13,7 +13,7 @@ def orders_page(request: Request):
     # Voorbereiding voor multi-shop (nu nog vast op ABC-LED)
     shop_key = request.query_params.get("shop") or "abc-led"
 
-    shopify = ShopifyClient(shop_key=shop_key)
+    shopify = ShopifyClient(shop_key)
     try:
         orders = shopify.list_orders()
     finally:
