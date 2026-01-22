@@ -1,20 +1,29 @@
 <!doctype html>
-<html lang=""nl"">
+<html lang="nl">
   <head>
-    <meta charset=""utf-8"" />
-    <meta name=""viewport"" content=""width=device-width,initial-scale=1"" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>ABC Dashboard</title>
-    <link rel=""stylesheet"" href=""/static/style.css"" />
+
+    <link rel="stylesheet" href="/static/style.css" />
+
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png" />
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/android-chrome-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/android-chrome-512x512.png" />
   </head>
+
   <body>
-    <header class=""topbar"">
-      <div class=""brand"">ABC Dashboard</div>
-      <nav class=""nav"">
-        <a href=""/orders"">Orders</a>
+    <header class="topbar">
+      <div class="brand">ABC Dashboard</div>
+      <nav class="nav">
+        <a href="/orders">Orders</a>
       </nav>
     </header>
 
-    <main class=""container"">
+    <main class="container">
       {% block content %}{% endblock %}
     </main>
   </body>
