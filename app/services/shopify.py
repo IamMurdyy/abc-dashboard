@@ -93,3 +93,12 @@ class ShopifyClient:
         r.raise_for_status()
         data = r.json()
         return data.get("orders", [])
+    
+    def get_order(self, order_id: int):
+    url = f"{self.base_url}/orders/{order_id}.json"
+    r = self.session.get(url, timeout=30)
+    r.raise_for_status()
+    return r.json().get("order")
+
+
+

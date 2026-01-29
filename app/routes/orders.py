@@ -22,8 +22,20 @@ def orders_page(request: Request):
     rows = []
     for o in orders:
         customer = o.get("customer") or {}
+        shipping_address = o.get("shipping_address") or {}
         shipping_lines = o.get("shipping_lines") or []
-        shipping_title = shipping_lines[0].get("title") if shipping_lines else "-"
+
+        # klantnaam: eerst customer, anders shipping address, anders "-"
+        customer_name = (
+            f"{customer.get('first_name','')} {customer.get('last_name','')}".strip()
+            or (shipping_address.get("name") or "").strip()
+            or "-"
+        )
+
+        # verzendmethode: alle shipping lines titels
+        shipping_titles = [ (l.get("title") or "").strip() for l in shipping_lines ]
+        shipping_titles = [t for t in shipping_titles if t]
+        shipping_title = ", ".join(shipping_titles) if shipping_titles else "-"
 
         rows.append(
             {
@@ -32,13 +44,11 @@ def orders_page(request: Request):
                 "created_at": o.get("created_at"),
                 "total_price": o.get("total_price"),
                 "currency": o.get("currency"),
-                "customer": (
-                    f"{customer.get('first_name','')} {customer.get('last_name','')}".strip()
-                    or "-"
-                ),
-                "shipping": shipping_title or "-",
+                "customer": customer_name,
+                "shipping": shipping_title,
             }
         )
+
 
     return templates.TemplateResponse(
         "orders.html",
@@ -83,3 +93,30 @@ def orders_fetch(request: Request):
             url=f"/orders?shop={shop_key}&toast={msg}&toast_type=error",
             status_code=303,
         )
+
+@router.get("/orders/{order_id}", response_class=HTMLResponse)
+def order_detail(request: Request, order_id: int):
+    shop_key = request.query_params.get("shop") or "abc-led"
+
+    shopify = ShopifyClient(shop_key)
+    try:
+        order = shopify.get_order(order_id)
+    finally:
+        shopify.close()
+
+    if not order:
+        return templates.TemplateResponse(
+            "order_detail.html",
+            {"request": request, "order": None, "active_page": "orders", "active_shop": shop_key},
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "order_detail.html",
+        {
+            "request": request,
+            "order": order,
+            "active_page": "orders",
+            "active_shop": shop_key,
+        },
+    )

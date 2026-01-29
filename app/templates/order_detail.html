@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ order.name if order else "Order" }} | ABC Dashboard{% endblock %}
+
+{% block content %}
+  <section class="page-header">
+    <div>
+      <h1>Order {{ order.name }}</h1>
+      <p class="muted">{{ active_shop | upper }}</p>
+    </div>
+    <div class="actions">
+      <a class="btn" href="/orders?shop={{ active_shop }}">← Terug</a>
+    </div>
+  </section>
+
+  {% if not order %}
+    <p class="muted">Order niet gevonden.</p>
+  {% else %}
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Variant</th>
+          <th>SKU</th>
+          <th>Aantal</th>
+          <th>Prijs</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for li in order.line_items %}
+        <tr>
+          <td>{{ li.title }}</td>
+          <td>{{ li.variant_title or "-" }}</td>
+          <td>{{ li.sku or "-" }}</td>
+          <td>{{ li.quantity }}</td>
+          <td>{{ li.price }} {{ order.currency }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% endif %}
+{% endblock %}
