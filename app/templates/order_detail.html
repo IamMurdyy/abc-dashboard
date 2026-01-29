@@ -16,6 +16,22 @@
     <p class="muted">Order niet gevonden.</p>
   {% else %}
 
+  <!-- Klant + verzending info -->
+  <div class="table-wrap" style="margin-bottom: 14px;">
+    <table>
+      <tbody>
+        <tr>
+          <th style="width: 180px;">Klant</th>
+          <td>{{ customer_name }}</td>
+        </tr>
+        <tr>
+          <th>Verzending</th>
+          <td>{{ shipping_method }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
   <div class="table-wrap">
     <table>
       <thead>

@@ -84,26 +84,27 @@ class ShopifyClient:
         """
         url = f"{self.base_url}/orders.json"
         params = {
-            "status": "open",
+            "status": "open",  # jij wil dit zo houden
             "financial_status": "paid",
             "fulfillment_status": "unfulfilled",
             "limit": limit,
+            # Forceer de velden die we nodig hebben voor klant + verzending
+            "fields": "id,name,created_at,total_price,currency,customer,shipping_lines,shipping_address,billing_address",
         }
         r = self.session.get(url, params=params, timeout=30)
         r.raise_for_status()
         data = r.json()
         return data.get("orders", [])
-    
+
     def get_order(self, order_id: int):
         """
-        Haal 1 order op
+        Haal 1 order op (incl. regels) + klant/verzending velden.
         """
         url = f"{self.base_url}/orders/{order_id}.json"
-        r = self.session.get(url, timeout=30)
+        params = {
+            "fields": "id,name,created_at,total_price,currency,customer,shipping_lines,shipping_address,billing_address,line_items"
+        }
+        r = self.session.get(url, params=params, timeout=30)
         r.raise_for_status()
         data = r.json()
         return data.get("order")
-
-
-
-
