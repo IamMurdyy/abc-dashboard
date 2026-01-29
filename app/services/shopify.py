@@ -5,17 +5,6 @@ import requests
 class ShopifyClient:
     """
     Multi-shop ready Shopify client.
-    Env vars per shop via prefix, bijv:
-
-    ABCLED_SHOPIFY_SHOP=abc-led.myshopify.com
-    ABCLED_SHOPIFY_ACCESS_TOKEN=shpat_...   (aanrader)
-    # of (fallback):
-    ABCLED_SHOPIFY_TOKEN=shpat_...
-    ABCLED_SHOPIFY_API_VERSION=2024-10      (optioneel)
-
-    Later:
-    ABCSTORE_SHOPIFY_SHOP=abcstore-nl.myshopify.com
-    ABCSTORE_SHOPIFY_ACCESS_TOKEN=...
     """
 
     SHOP_PREFIX = {
@@ -80,12 +69,12 @@ class ShopifyClient:
         """
         url = f"{self.base_url}/orders.json"
         params = {
-            "status": "open",  # jij wil dit zo houden
+            "status": "open",
             "financial_status": "paid",
             "fulfillment_status": "unfulfilled",
             "limit": limit,
-            # Forceer velden voor klant/verzending + fallback opties
-            "fields": "id,name,created_at,total_price,currency,customer,shipping_lines,shipping_address,billing_address",
+            # velden die we nodig hebben in de lijst
+            "fields": "id,name,created_at,total_price,currency,email,customer,shipping_lines,shipping_address,billing_address",
         }
         r = self.session.get(url, params=params, timeout=30)
         r.raise_for_status()
@@ -94,13 +83,23 @@ class ShopifyClient:
 
     def get_order(self, order_id: int):
         """
-        Haal 1 order op (incl. regels) + klant/verzending velden.
+        Haal 1 order op (incl. regels)
         """
         url = f"{self.base_url}/orders/{order_id}.json"
         params = {
-            "fields": "id,name,created_at,total_price,currency,customer,shipping_lines,shipping_address,billing_address,line_items"
+            "fields": "id,name,created_at,total_price,currency,email,customer,shipping_lines,shipping_address,billing_address,line_items",
         }
         r = self.session.get(url, params=params, timeout=30)
         r.raise_for_status()
         data = r.json()
         return data.get("order")
+
+    def get_customer(self, customer_id: int):
+        """
+        Haal 1 klant op (voor B2B company / naam) - gebruiken we als fallback voor de orderlijst.
+        """
+        url = f"{self.base_url}/customers/{customer_id}.json"
+        r = self.session.get(url, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        return data.get("customer")
