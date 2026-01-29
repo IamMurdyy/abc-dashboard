@@ -31,10 +31,8 @@ class ShopifyClient:
         if not prefix:
             raise ValueError(f"Onbekende shop_key '{self.shop_key}'. Voeg toe aan SHOP_PREFIX.")
 
-        # Shop domain
         shop = os.getenv(f"{prefix}_SHOPIFY_SHOP") or os.getenv("SHOPIFY_SHOP")
 
-        # Token: accepteer zowel ACCESS_TOKEN als TOKEN (per-shop + globale fallback)
         token = (
             os.getenv(f"{prefix}_SHOPIFY_ACCESS_TOKEN")
             or os.getenv(f"{prefix}_SHOPIFY_TOKEN")
@@ -42,7 +40,6 @@ class ShopifyClient:
             or os.getenv("SHOPIFY_TOKEN")
         )
 
-        # API version
         version = (
             os.getenv(f"{prefix}_SHOPIFY_API_VERSION")
             or os.getenv("SHOPIFY_API_VERSION")
@@ -57,7 +54,6 @@ class ShopifyClient:
                 f"Fallback: SHOPIFY_SHOP + SHOPIFY_ACCESS_TOKEN (of SHOPIFY_TOKEN)."
             )
 
-        # Zorg dat shop netjes is (zonder protocol / trailing slash)
         shop = shop.replace("https://", "").replace("http://", "").strip("/")
 
         self.shop = shop
@@ -88,7 +84,7 @@ class ShopifyClient:
             "financial_status": "paid",
             "fulfillment_status": "unfulfilled",
             "limit": limit,
-            # Forceer de velden die we nodig hebben voor klant + verzending
+            # Forceer velden voor klant/verzending + fallback opties
             "fields": "id,name,created_at,total_price,currency,customer,shipping_lines,shipping_address,billing_address",
         }
         r = self.session.get(url, params=params, timeout=30)

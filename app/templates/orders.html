@@ -10,9 +10,7 @@
 
     <div class="actions">
       <form method="post" action="/orders/fetch{% if active_shop %}?shop={{ active_shop }}{% endif %}">
-  <button class="btn primary" type="submit">Orders ophalen</button>
-</form>
-
+        <button class="btn primary" type="submit">Orders ophalen</button>
       </form>
     </div>
   </section>
@@ -30,14 +28,13 @@
       </thead>
       <tbody>
         {% for o in orders %}
-<tr class="clickable-row" data-href="/orders/{{ o.id }}?shop={{ active_shop }}">
-  <td>{{ o.name }}</td>
-  <td>{{ o.customer }}</td>
-  <td>{{ o.shipping }}</td>
-  <td>{{ o.created_at }}</td>
-  <td>{{ o.total_price }} {{ o.currency }}</td>
-</tr>
-
+        <tr class="clickable-row" data-href="/orders/{{ o.id }}?shop={{ active_shop }}">
+          <td>{{ o.name }}</td>
+          <td>{{ o.customer }}</td>
+          <td>{{ o.shipping }}</td>
+          <td>{{ o.created_at }}</td>
+          <td>{{ o.total_price }} {{ o.currency }}</td>
+        </tr>
         {% else %}
         <tr>
           <td colspan="5" class="muted">Geen orders gevonden.</td>
@@ -48,14 +45,12 @@
   </div>
 
   <script>
-  document.querySelectorAll("tr.clickable-row").forEach((row) => {
-    row.style.cursor = "pointer";
-    row.addEventListener("click", () => {
-      const href = row.dataset.href;
-      if (href) window.location.href = href;
+    document.querySelectorAll("tr.clickable-row").forEach((row) => {
+      row.style.cursor = "pointer";
+      row.addEventListener("click", () => {
+        const href = row.dataset.href;
+        if (href) window.location.href = href;
+      });
     });
-  });
-</script>
-
-
+  </script>
 {% endblock %}
