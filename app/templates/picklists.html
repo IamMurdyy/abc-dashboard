@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="h4 mb-1">Picklijsten</h1>
+    <div class="text-muted small">Shop: <b>{{ shop }}</b> • Regels: <b>{{ row_count }}</b></div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <!-- later: shop selector -->
+    <a class="btn btn-outline-secondary btn-sm" href="/picklijsten?shop={{ shop }}">Vernieuwen</a>
+    <button class="btn btn-outline-primary btn-sm" onclick="window.print()">Print</button>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-sm align-middle pick-table">
+    <thead class="table-light">
+      <tr>
+        <th>Order</th>
+        <th>Klant</th>
+        <th>MPN</th>
+        <th>Aantal</th>
+        <th>Product</th>
+        <th>Prijs</th>
+        <th>Subtotaal</th>
+        <th>Verzendmethode</th>
+        <th>Inkoop</th>
+        <th>Uit</th>
+        <th>Opmerking</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+        <tr class="
+          {% if r.is_pickup %} pickup-row {% endif %}
+          {% if r.is_qty_multi %} fw-bold {% endif %}
+          {% if r.is_red %} danger-text {% endif %}
+        ">
+          <td>{{ r.order_number }}</td>
+          <td>{{ r.customer_name }}</td>
+          <td>{{ r.mpn }}</td>
+          <td>{{ r.qty }}</td>
+          <td>{{ r.product_name }}</td>
+          <td>€ {{ '%.2f'|format(r.unit_price) }}</td>
+          <td>€ {{ '%.2f'|format(r.order_subtotal) }}</td>
+          <td>{{ r.shipping_method }}</td>
+
+          <td class="blank-cell"></td>
+          <td class="blank-cell"></td>
+          <td class="blank-cell"></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

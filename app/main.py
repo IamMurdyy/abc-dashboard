@@ -3,11 +3,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, FileResponse
 
 from app.routes.orders import router as orders_router
+from app.routes.picklists import router as picklists_router
 
 app = FastAPI(title="ABC Dashboard")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 app.include_router(orders_router)
+app.include_router(picklists_router)
 
 @app.get("/")
 def root():

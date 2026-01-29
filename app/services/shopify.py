@@ -74,7 +74,7 @@ class ShopifyClient:
             "fulfillment_status": "unfulfilled",
             "limit": limit,
             # velden die we nodig hebben in de lijst
-            "fields": "id,name,created_at,total_price,currency,email,customer,shipping_lines,shipping_address,billing_address",
+            "fields": "id,name,created_at,total_price,subtotal_price,currency,email,customer,shipping_lines,shipping_address,billing_address,line_items",
         }
         r = self.session.get(url, params=params, timeout=30)
         r.raise_for_status()
@@ -103,3 +103,10 @@ class ShopifyClient:
         r.raise_for_status()
         data = r.json()
         return data.get("customer")
+
+def fetch_orders(shop: str = "abc-led", limit: int = 50):
+    client = ShopifyClient(shop_key=shop)
+    try:
+        return client.list_orders(limit=limit)
+    finally:
+        client.close()

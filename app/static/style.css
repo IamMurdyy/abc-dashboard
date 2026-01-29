@@ -264,3 +264,19 @@ tbody tr:hover{
   transform: translateY(-6px);
   pointer-events: none;
 }
+
+.pickup-row { background: #d7f7d7 !important; } /* groen */
+.danger-text { color: #c01818 !important; }      /* rood */
+.blank-cell {
+  width: 70px;
+  height: 28px;
+  border: 1px solid #ddd;
+  background: #fff;
+}
+
+/* Print: iets strakker */
+@media print {
+  .btn, nav, .no-print { display: none !important; }
+  .pick-table { font-size: 11px; }
+  .blank-cell { height: 22px; }
+}
