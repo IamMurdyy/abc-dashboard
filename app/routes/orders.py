@@ -33,7 +33,7 @@ def orders_page(request: Request):
         )
 
         # verzendmethode: alle shipping lines titels
-        shipping_titles = [ (l.get("title") or "").strip() for l in shipping_lines ]
+        shipping_titles = [(l.get("title") or "").strip() for l in shipping_lines]
         shipping_titles = [t for t in shipping_titles if t]
         shipping_title = ", ".join(shipping_titles) if shipping_titles else "-"
 
@@ -49,7 +49,6 @@ def orders_page(request: Request):
             }
         )
 
-
     return templates.TemplateResponse(
         "orders.html",
         {
@@ -62,6 +61,39 @@ def orders_page(request: Request):
                 # later:
                 # {"key": "abcstore", "name": "ABCstore", "href": "/orders?shop=abcstore"},
             ],
+        },
+    )
+
+
+@router.get("/orders/{order_id}", response_class=HTMLResponse)
+def order_detail(request: Request, order_id: int):
+    shop_key = request.query_params.get("shop") or "abc-led"
+
+    shopify = ShopifyClient(shop_key)
+    try:
+        order = shopify.get_order(order_id)
+    finally:
+        shopify.close()
+
+    if not order:
+        return templates.TemplateResponse(
+            "order_detail.html",
+            {
+                "request": request,
+                "order": None,
+                "active_page": "orders",
+                "active_shop": shop_key,
+            },
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "order_detail.html",
+        {
+            "request": request,
+            "order": order,
+            "active_page": "orders",
+            "active_shop": shop_key,
         },
     )
 
@@ -87,36 +119,9 @@ def orders_fetch(request: Request):
             status_code=303,
         )
 
-    except Exception as e:
-        msg = f"Fout bij ophalen orders: {type(e).__name__}"
+    except Exception:
+        msg = "Fout bij ophalen orders: ShopifyError"
         return RedirectResponse(
             url=f"/orders?shop={shop_key}&toast={msg}&toast_type=error",
             status_code=303,
         )
-
-@router.get("/orders/{order_id}", response_class=HTMLResponse)
-def order_detail(request: Request, order_id: int):
-    shop_key = request.query_params.get("shop") or "abc-led"
-
-    shopify = ShopifyClient(shop_key)
-    try:
-        order = shopify.get_order(order_id)
-    finally:
-        shopify.close()
-
-    if not order:
-        return templates.TemplateResponse(
-            "order_detail.html",
-            {"request": request, "order": None, "active_page": "orders", "active_shop": shop_key},
-            status_code=404,
-        )
-
-    return templates.TemplateResponse(
-        "order_detail.html",
-        {
-            "request": request,
-            "order": order,
-            "active_page": "orders",
-            "active_shop": shop_key,
-        },
-    )
