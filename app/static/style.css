@@ -238,6 +238,7 @@ tbody tr:hover{
     width: auto;
   }
 }
+
 /* ===== Toast ===== */
 .toast{
   position: fixed;
@@ -265,18 +266,161 @@ tbody tr:hover{
   pointer-events: none;
 }
 
-.pickup-row { background: #d7f7d7 !important; } /* groen */
-.danger-text { color: #c01818 !important; }      /* rood */
-.blank-cell {
-  width: 70px;
-  height: 28px;
-  border: 1px solid #ddd;
-  background: #fff;
+/* ===== Picklijsten (UI + print) ===== */
+
+.pick-table{
+  border-collapse: collapse !important;
 }
 
-/* Print: iets strakker */
+/* Gridlines overal (ook horizontaal) */
+.pick-table th,
+.pick-table td{
+  border: 1px solid #cfcfcf !important;
+}
+
+/* Groen gevuld (afhalen) */
+.pick-table tr.pickup-row td{
+  background: #d7f7d7 !important;
+  color: #000 !important;
+}
+
+/* Rood tekst (Pakket / Package Europe etc.) */
+.pick-table tr.danger-text td{
+  color: #c01818 !important;
+}
+
+/* Qty > 1: hele rij vet */
+.pick-table tr.fw-bold td{
+  font-weight: 800 !important;
+}
+
+/* Blank invul vakjes */
+.blank-cell{
+  width: 70px;
+  height: 26px;
+  background: #fff !important;
+  color: #000 !important;
+  border: 1px solid #cfcfcf !important;
+}
+
+/* =========================================================
+   Picklijst – WIT THEMA (alleen deze pagina)
+   ========================================================= */
+
+.picklist-page{
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Koptekst / subtitel */
+.picklist-page h1,
+.picklist-page .text-muted{
+  color: #000000 !important;
+}
+
+/* Tabel basis */
+.picklist-page .table,
+.picklist-page .pick-table{
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Tabel headers */
+.picklist-page thead th{
+  background: #f2f2f2 !important;
+  color: #000000 !important;
+  font-weight: 700;
+  border: 1px solid #cfcfcf !important;
+}
+
+/* Tabel cellen */
+.picklist-page td,
+.picklist-page th{
+  border: 1px solid #cfcfcf !important;
+  color: #000000 !important;
+}
+
+/* Geen hover */
+.picklist-page tbody tr:hover{
+  background: transparent !important;
+}
+
+/* Afhalen = groen */
+.picklist-page tr.pickup-row td{
+  background: #d7f7d7 !important;
+  color: #000000 !important;
+}
+
+/* Rood blijft rood (op wit) */
+.picklist-page tr.danger-text td{
+  color: #c01818 !important;
+}
+
+/* Qty > 1 vet */
+.picklist-page tr.fw-bold td{
+  font-weight: 800 !important;
+}
+
+/* ---------------------------------------------------------
+   Print optimalisatie (ÉÉN keer)
+   --------------------------------------------------------- */
 @media print {
-  .btn, nav, .no-print { display: none !important; }
-  .pick-table { font-size: 11px; }
-  .blank-cell { height: 22px; }
+  @page{
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  /* Achtergrondkleuren écht meenemen */
+  *{
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Alles behalve de tabel weg */
+  .topbar,
+  .sidebar,
+  nav,
+  .picklist-header,
+  .btn,
+  .d-flex.gap-2{
+    display: none !important;
+  }
+
+  /* Pagina benutten */
+  body,
+  .container,
+  .picklist-page{
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  .table-responsive{
+    overflow: visible !important;
+  }
+
+  /* Header maar 1 keer (niet herhalen) */
+  thead{
+    display: table-row-group !important;
+  }
+
+  .pick-table{
+    font-size: 11px;
+  }
+
+  /* Footer: alleen betrouwbare pagina teller */
+  .print-footer{
+    position: fixed;
+    bottom: 6mm;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 11px;
+    color: #000 !important;
+  }
+
+  .print-footer::after{
+    content: "Pagina " counter(page);
+  }
 }
