@@ -19,18 +19,78 @@ def _norm_str(v: Any) -> str:
         return ""
     return str(v).strip()
 
-def _get_customer_name(order: Dict[str, Any]) -> str:
-    ship = order.get("shipping_address") or {}
-    first = _norm_str(ship.get("first_name"))
-    last = _norm_str(ship.get("last_name"))
-    if first or last:
-        return f"{first} {last}".strip()
+def _clean(v: Any) -> str:
+    return _norm_str(v)
 
+def _full_name_from_address(addr: Dict[str, Any]) -> str:
+    """
+    Shopify address object heeft vaak 'name' gevuld (volledige naam).
+    Fallback naar first/last en daarna company.
+    """
+    name = _clean(addr.get("name"))
+    if name:
+        return name
+
+    first = _clean(addr.get("first_name"))
+    last = _clean(addr.get("last_name"))
+    full = f"{first} {last}".strip()
+    if full:
+        return full
+
+    company = _clean(addr.get("company"))
+    if company:
+        return company
+
+    return ""
+
+def _get_customer_name(order: Dict[str, Any]) -> str:
+    """
+    Klantnaam bepalen.
+    0) Eerst Flow-metafield (custom.pick_klantnaam) dat we in shopify.py als order["pick_klantnaam"] zetten.
+    Daarna: shipping/billing/customer/email fallbacks.
+    """
+
+    # 0) Flow metafield (werkt ook als PII via API redacted is)
+    mf_name = _clean(order.get("pick_klantnaam"))
+    if mf_name:
+        return mf_name
+
+    # 1) shipping_address (meest relevant voor picken)
+    ship = order.get("shipping_address") or {}
+    ship_name = _full_name_from_address(ship)
+    if ship_name:
+        return ship_name
+
+    # 2) billing_address (soms wél gevuld)
+    bill = order.get("billing_address") or {}
+    bill_name = _full_name_from_address(bill)
+    if bill_name:
+        return bill_name
+
+    # 3) customer object
     cust = order.get("customer") or {}
-    first = _norm_str(cust.get("first_name"))
-    last = _norm_str(cust.get("last_name"))
-    name = f"{first} {last}".strip()
-    return name or "-"
+
+    cust_name = _clean(cust.get("name"))
+    if cust_name:
+        return cust_name
+
+    first = _clean(cust.get("first_name"))
+    last = _clean(cust.get("last_name"))
+    full = f"{first} {last}".strip()
+    if full:
+        return full
+
+    default_addr = cust.get("default_address") or {}
+    default_name = _full_name_from_address(default_addr)
+    if default_name:
+        return default_name
+
+    # 4) laatste redmiddel: email (beter dan '-')
+    email = _clean(order.get("email") or order.get("contact_email") or cust.get("email"))
+    if email:
+        return email
+
+    return "-"
 
 def _get_shipping_method(order: Dict[str, Any]) -> str:
     lines = order.get("shipping_lines") or []

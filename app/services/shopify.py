@@ -63,6 +63,10 @@ class ShopifyClient:
         except Exception:
             pass
 
+    # -------------------------
+    # REST helpers
+    # -------------------------
+
     def list_orders(self, limit: int = 50):
         """
         Paid + unfulfilled
@@ -73,8 +77,6 @@ class ShopifyClient:
             "financial_status": "paid",
             "fulfillment_status": "unfulfilled",
             "limit": limit,
-            # velden die we nodig hebben in de lijst
-            "fields": "id,name,created_at,total_price,subtotal_price,currency,email,customer,shipping_lines,shipping_address,billing_address,line_items",
         }
         r = self.session.get(url, params=params, timeout=30)
         r.raise_for_status()
@@ -86,10 +88,7 @@ class ShopifyClient:
         Haal 1 order op (incl. regels)
         """
         url = f"{self.base_url}/orders/{order_id}.json"
-        params = {
-            "fields": "id,name,created_at,total_price,currency,email,customer,shipping_lines,shipping_address,billing_address,line_items",
-        }
-        r = self.session.get(url, params=params, timeout=30)
+        r = self.session.get(url, timeout=30)
         r.raise_for_status()
         data = r.json()
         return data.get("order")
@@ -104,9 +103,127 @@ class ShopifyClient:
         data = r.json()
         return data.get("customer")
 
+    # -------------------------
+    # GraphQL helper
+    # -------------------------
+
+    def graphql(self, query: str, variables: dict | None = None) -> dict:
+        """
+        Shopify GraphQL Admin API call.
+        """
+        url = f"https://{self.shop}/admin/api/{self.version}/graphql.json"
+        payload = {"query": query, "variables": variables or {}}
+        r = self.session.post(url, json=payload, timeout=30)
+        r.raise_for_status()
+
+        data = r.json() or {}
+        if data.get("errors"):
+            raise RuntimeError(f"GraphQL errors: {data['errors']}")
+        return data.get("data") or {}
+
+
+def fetch_order_pick_names(client: ShopifyClient, order_ids: list[int]) -> dict[int, str]:
+    """
+    Haalt custom.pick_klantnaam op voor meerdere orders in 1 GraphQL call.
+    Retourneert: { order_id_int: "Naam" }
+    """
+    if not order_ids:
+        return {}
+
+    gids = [f"gid://shopify/Order/{oid}" for oid in order_ids]
+
+    q = """
+    query($ids: [ID!]!) {
+      nodes(ids: $ids) {
+        ... on Order {
+          id
+          metafield(namespace: "custom", key: "pick_klantnaam") { value }
+        }
+      }
+    }
+    """
+    data = client.graphql(q, {"ids": gids})
+    out: dict[int, str] = {}
+
+    for node in (data.get("nodes") or []):
+        if not node:
+            continue
+
+        gid = node.get("id") or ""
+        mf = node.get("metafield") or {}
+        val = (mf.get("value") or "").strip()
+        if not val:
+            continue
+
+        try:
+            numeric_id = int(gid.rsplit("/", 1)[-1])
+            out[numeric_id] = val
+        except Exception:
+            pass
+
+    return out
+
+
 def fetch_orders(shop: str = "abc-led", limit: int = 50):
     client = ShopifyClient(shop_key=shop)
     try:
-        return client.list_orders(limit=limit)
+        orders = client.list_orders(limit=limit)
+
+        # 1) Metafield namen in bulk ophalen en toevoegen aan orders
+        order_ids = [int(o["id"]) for o in orders if o.get("id")]
+        try:
+            pick_names = fetch_order_pick_names(client, order_ids)
+        except Exception:
+            pick_names = {}
+
+        for o in orders:
+            oid = o.get("id")
+            if oid in pick_names:
+                o["pick_klantnaam"] = pick_names[oid]
+
+        # 2) (optioneel) customer fallback (blijft zoals je had)
+        customer_cache = {}
+
+        for o in orders:
+            cust = o.get("customer") or {}
+            cust_id = cust.get("id")
+            if not cust_id:
+                continue
+
+            ship = o.get("shipping_address") or {}
+            bill = o.get("billing_address") or {}
+
+            has_name = bool(
+                ship.get("name")
+                or ship.get("first_name")
+                or ship.get("last_name")
+                or ship.get("company")
+                or bill.get("name")
+                or bill.get("first_name")
+                or bill.get("last_name")
+                or bill.get("company")
+                or cust.get("name")
+                or cust.get("first_name")
+                or cust.get("last_name")
+                or cust.get("email")
+                or o.get("email")
+                or o.get("contact_email")
+            )
+            if has_name:
+                continue
+
+            if cust_id in customer_cache:
+                o["customer"] = customer_cache[cust_id]
+                continue
+
+            try:
+                full_customer = client.get_customer(int(cust_id))
+                if full_customer:
+                    customer_cache[cust_id] = full_customer
+                    o["customer"] = full_customer
+            except Exception:
+                pass
+
+        return orders
     finally:
         client.close()

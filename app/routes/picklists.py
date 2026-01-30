@@ -3,10 +3,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.services.shopify import fetch_orders
-from app.services.picking import build_pick_rows  # <-- juiste import
+from app.services.picking import build_pick_rows
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+
 
 @router.get("/picklijsten", response_class=HTMLResponse)
 def picklijsten(request: Request, shop: str = "abc-led"):
@@ -24,4 +25,3 @@ def picklijsten(request: Request, shop: str = "abc-led"):
             "active_shop": shop,
         },
     )
-

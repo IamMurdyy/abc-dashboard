@@ -465,7 +465,14 @@ tbody tr:hover{
 .picklist-page .pick-table td:nth-child(1){ width: 70px; }   /* Order */
 
 .picklist-page .pick-table th:nth-child(2),
-.picklist-page .pick-table td:nth-child(2){ width: 70px; }   /* Klant */
+.picklist-page .pick-table td:nth-child(2){ width: 160px; }   /* Klant */
+.picklist-page .pick-table th:nth-child(2),
+.picklist-page .pick-table td:nth-child(2){
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 
 /* MPN – extra strak */
 .picklist-page .pick-table th:nth-child(3),
