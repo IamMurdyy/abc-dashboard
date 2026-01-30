@@ -424,3 +424,73 @@ tbody tr:hover{
     content: "Pagina " counter(page);
   }
 }
+/* Picklijst: buttons leesbaar op wit */
+.picklist-page .btn{
+  color: #000 !important;
+  border-color: #bdbdbd !important;
+}
+
+.picklist-page .btn-outline-primary{
+  color: #000 !important;
+  border-color: #7a7a7a !important;
+}
+
+.picklist-page .btn-outline-secondary{
+  color: #000 !important;
+  border-color: #7a7a7a !important;
+}
+/* Picklijst: compacte tabel */
+.picklist-page .pick-table{
+  table-layout: fixed;              /* kolommen strak / voorspelbaar */
+  width: 100%;
+}
+
+.picklist-page .pick-table th,
+.picklist-page .pick-table td{
+  padding: 4px 6px !important;      /* << hier win je het meeste */
+  line-height: 1.1 !important;
+  vertical-align: middle !important;
+  white-space: nowrap;              /* standaard: geen wrap */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Product mag wél wrappen (anders wordt dat ellipsis-hel) */
+.picklist-page .pick-table th:nth-child(5),
+.picklist-page .pick-table td:nth-child(5){
+  white-space: normal !important;
+}
+/* Picklijst: kolombreedtes (matcht je huidige kolomvolgorde) */
+.picklist-page .pick-table th:nth-child(1),
+.picklist-page .pick-table td:nth-child(1){ width: 70px; }   /* Order */
+
+.picklist-page .pick-table th:nth-child(2),
+.picklist-page .pick-table td:nth-child(2){ width: 70px; }   /* Klant */
+
+/* MPN – extra strak */
+.picklist-page .pick-table th:nth-child(3),
+.picklist-page .pick-table td:nth-child(3){
+  width: 60px;          /* was 80 */
+  text-align: right;   /* cijfers staan rustiger rechts */
+}
+
+.picklist-page .pick-table th:nth-child(4),
+.picklist-page .pick-table td:nth-child(4){ width: 55px; }   /* Aantal */
+
+.picklist-page .pick-table th:nth-child(6),
+.picklist-page .pick-table td:nth-child(6){ width: 70px; }   /* Prijs */
+
+.picklist-page .pick-table th:nth-child(7),
+.picklist-page .pick-table td:nth-child(7){ width: 80px; }   /* Subtotaal */
+
+.picklist-page .pick-table th:nth-child(8),
+.picklist-page .pick-table td:nth-child(8){ width: 95px; }   /* Verzendmethode (smaller) */
+
+.picklist-page .pick-table th:nth-child(9),
+.picklist-page .pick-table td:nth-child(9){ width: 55px; }   /* Inkoop */
+
+.picklist-page .pick-table th:nth-child(10),
+.picklist-page .pick-table td:nth-child(10){ width: 45px; }  /* Uit */
+
+.picklist-page .pick-table th:nth-child(11),
+.picklist-page .pick-table td:nth-child(11){ width: 90px; }  /* Opmerking */
