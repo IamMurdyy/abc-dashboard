@@ -151,7 +151,34 @@ def orders_page(request: Request):
     )
 
 
-@router.get("/orders/{order_id}", response_class=HTMLResponse)
+@router.get("/orders/refresh")
+def orders_refresh(request: Request):
+    shop_key = request.query_params.get("shop") or "abc-led"
+
+    try:
+        shopify = ShopifyClient(shop_key=shop_key)
+        try:
+            orders = shopify.list_orders()
+        finally:
+            shopify.close()
+
+        count = len(orders) if orders else 0
+        msg = f"Orders opgehaald: {count}"
+
+        return RedirectResponse(
+            url=f"/orders?shop={shop_key}&toast={msg}&toast_type=success",
+            status_code=303,
+        )
+
+    except Exception:
+        msg = "Fout bij ophalen orders"
+        return RedirectResponse(
+            url=f"/orders?shop={shop_key}&toast={msg}&toast_type=error",
+            status_code=303,
+        )
+
+
+@router.get("/orders/{order_id:int}", response_class=HTMLResponse)
 def order_detail(request: Request, order_id: int):
     shop_key = request.query_params.get("shop") or "abc-led"
 
@@ -189,31 +216,3 @@ def order_detail(request: Request, order_id: int):
             "shipping_method": shipping_method,
         },
     )
-
-
-@router.get("/orders/refresh")
-def orders_refresh(request: Request):
-    shop_key = request.query_params.get("shop") or "abc-led"
-
-    try:
-        shopify = ShopifyClient(shop_key=shop_key)
-        try:
-            orders = shopify.list_orders()
-        finally:
-            shopify.close()
-
-        count = len(orders) if orders else 0
-        msg = f"Orders opgehaald: {count}"
-
-        return RedirectResponse(
-            url=f"/orders?shop={shop_key}&toast={msg}&toast_type=success",
-            status_code=303,
-        )
-
-    except Exception as e:
-        msg = f"Fout bij ophalen orders: {type(e).__name__}"
-        return RedirectResponse(
-            url=f"/orders?shop={shop_key}&toast={msg}&toast_type=error",
-            status_code=303,
-        )
-
