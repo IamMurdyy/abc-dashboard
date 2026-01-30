@@ -191,8 +191,8 @@ def order_detail(request: Request, order_id: int):
     )
 
 
-@router.post("/orders/fetch")
-def orders_fetch(request: Request):
+@router.get("/orders/refresh")
+def orders_refresh(request: Request):
     shop_key = request.query_params.get("shop") or "abc-led"
 
     try:
@@ -216,3 +216,4 @@ def orders_fetch(request: Request):
             url=f"/orders?shop={shop_key}&toast={msg}&toast_type=error",
             status_code=303,
         )
+

@@ -20,6 +20,8 @@ def picklijsten(request: Request, shop: str = "abc-led"):
             "shop": shop,
             "rows": rows,
             "row_count": len(rows),
+            "active_page": "picklijsten",
+            "active_shop": shop,
         },
     )
 

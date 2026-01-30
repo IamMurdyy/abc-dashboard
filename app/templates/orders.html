@@ -9,9 +9,10 @@
     </div>
 
     <div class="actions">
-      <form method="post" action="/orders/fetch{% if active_shop %}?shop={{ active_shop }}{% endif %}">
-        <button class="btn primary" type="submit">Orders ophalen</button>
-      </form>
+<a class="btn primary" href="/orders/refresh{% if active_shop %}?shop={{ active_shop }}{% endif %}">
+  Orders ophalen
+</a>
+
     </div>
   </section>
 

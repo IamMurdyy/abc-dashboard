@@ -85,7 +85,11 @@
           >Orders</a>
 
           <!-- later: shop-specifieke pagina's -->
-          <a href="#" class="disabled" title="Komt later">Picklijsten</a>
+          <a
+  href="/picklijsten{% if active_shop %}?shop={{ active_shop }}{% endif %}"
+  class="{% if active_page == 'picklijsten' %}active{% endif %}"
+>Picklijsten</a>
+
           <a href="#" class="disabled" title="Komt later">Voorraad</a>
           <a href="#" class="disabled" title="Komt later">Rapporten</a>
           <a href="#" class="disabled" title="Komt later">Instellingen</a>
