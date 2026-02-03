@@ -4,9 +4,27 @@
 {% block content %}
   <section class="page-header">
     <div>
-      <h1>Order {{ order.name }}</h1>
-      <p class="muted">{{ active_shop | upper }}</p>
+      {% if order %}
+        <h1>{{ customer_name }}</h1>
+        <p class="muted">Order {{ order.name }} · {{ active_shop | upper }}</p>
+
+        <div style="margin-top: 8px; display:flex; gap:8px; flex-wrap: wrap;">
+          <span style="padding:4px 10px; border-radius:999px; border:1px solid #ddd;">
+            {{ status.financial }}
+          </span>
+          <span style="padding:4px 10px; border-radius:999px; border:1px solid #ddd;">
+            {{ status.fulfillment }}
+          </span>
+          <span style="padding:4px 10px; border-radius:999px; border:1px solid #ddd;">
+            Aangemaakt: {{ created_at }}
+          </span>
+        </div>
+      {% else %}
+        <h1>Order</h1>
+        <p class="muted">{{ active_shop | upper }}</p>
+      {% endif %}
     </div>
+
     <div class="actions">
       <a class="btn" href="/orders?shop={{ active_shop }}">← Terug</a>
     </div>
@@ -16,23 +34,8 @@
     <p class="muted">Order niet gevonden.</p>
   {% else %}
 
-  <!-- Klant + verzending info -->
+  <!-- Producten eerst -->
   <div class="table-wrap" style="margin-bottom: 14px;">
-    <table>
-      <tbody>
-        <tr>
-          <th style="width: 180px;">Klant</th>
-          <td>{{ customer_name }}</td>
-        </tr>
-        <tr>
-          <th>Verzending</th>
-          <td>{{ shipping_method }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="table-wrap">
     <table>
       <thead>
         <tr>
@@ -53,6 +56,103 @@
           <td>{{ li.price }} {{ order.currency }}</td>
         </tr>
         {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Totaal / bedragen daarna -->
+  <div class="table-wrap" style="margin-bottom: 14px;">
+    <table>
+      <tbody>
+        <tr>
+          <th style="width: 180px;">Totaal</th>
+          <td><strong>{{ money.total }} {{ money.currency }}</strong></td>
+        </tr>
+        <tr>
+          <th>Subtotaal</th>
+          <td>{{ money.subtotal }} {{ money.currency }}</td>
+        </tr>
+        <tr>
+          <th>Verzending</th>
+          <td>{{ money.shipping }} {{ money.currency }}</td>
+        </tr>
+        <tr>
+          <th>Korting</th>
+          <td>{{ money.discounts }} {{ money.currency }}</td>
+        </tr>
+        <tr>
+          <th>BTW</th>
+          <td>{{ money.tax }} {{ money.currency }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Tags / notitie (optioneel maar blijft handig voor intern) -->
+  <div class="table-wrap" style="margin-bottom: 14px;">
+    <table>
+      <tbody>
+        <tr>
+          <th style="width: 180px;">Tags</th>
+          <td>{{ tags or "-" }}</td>
+        </tr>
+        <tr>
+          <th>Notitie</th>
+          <td>{{ note or "-" }}</td>
+        </tr>
+        <tr>
+          <th>Verzending</th>
+          <td>{{ shipping_method }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Fulfillment / tracking -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 180px;">Fulfillment</th>
+          <th>Status</th>
+          <th>Carrier</th>
+          <th>Tracking</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if fulfillments and fulfillments|length > 0 %}
+          {% for f in fulfillments %}
+            <tr>
+              <td>
+                {{ f.name or "Fulfillment" }}
+                {% if f.created_at %}<div class="muted" style="font-size: 12px;">{{ f.created_at }}</div>{% endif %}
+              </td>
+              <td>{{ f.status or "-" }}</td>
+              <td>{{ f.tracking_company or "-" }}</td>
+              <td>
+                {% if f.tracking_numbers and f.tracking_numbers|length > 0 %}
+                  {% for tn in f.tracking_numbers %}
+                    <div>{{ tn }}</div>
+                  {% endfor %}
+                {% else %}
+                  -
+                {% endif %}
+
+                {% if f.tracking_urls and f.tracking_urls|length > 0 %}
+                  <div style="margin-top:6px;">
+                    {% for url in f.tracking_urls %}
+                      <a href="{{ url }}" target="_blank" rel="noreferrer">Tracking link</a><br>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="4" class="muted">Nog geen fulfillment / tracking beschikbaar.</td>
+          </tr>
+        {% endif %}
       </tbody>
     </table>
   </div>

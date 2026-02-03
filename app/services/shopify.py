@@ -227,3 +227,37 @@ def fetch_orders(shop: str = "abc-led", limit: int = 50):
         return orders
     finally:
         client.close()
+
+def fetch_order_pick_name(client: ShopifyClient, order_id: int) -> str | None:
+    """
+    Haalt custom.pick_klantnaam op voor 1 order via GraphQL (snel, 1 call).
+    Retourneert de string of None.
+    """
+    gid = f"gid://shopify/Order/{int(order_id)}"
+
+    q = """
+    query($id: ID!) {
+      order(id: $id) {
+        metafield(namespace: "custom", key: "pick_klantnaam") { value }
+      }
+    }
+    """
+    data = client.graphql(q, {"id": gid}) or {}
+    order = data.get("order") or {}
+    mf = order.get("metafield") or {}
+    val = (mf.get("value") or "").strip()
+    return val or None
+
+
+def get_order_pick_name(shop: str = "abc-led", order_id: int = 0) -> str | None:
+    """
+    Convenience wrapper: opent zelf een client en haalt pick_klantnaam op voor 1 order.
+    """
+    if not order_id:
+        return None
+
+    client = ShopifyClient(shop_key=shop)
+    try:
+        return fetch_order_pick_name(client, int(order_id))
+    finally:
+        client.close()

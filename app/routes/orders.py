@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.services.shopify import ShopifyClient, fetch_orders
+from app.services.shopify import ShopifyClient, fetch_orders, get_order_pick_name
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -147,7 +147,6 @@ def orders_refresh(request: Request):
 def order_detail(request: Request, order_id: int):
     shop_key = request.query_params.get("shop") or "abc-led"
 
-    # Detail houden we zoals je had: via ShopifyClient order ophalen
     shopify = ShopifyClient(shop_key)
     try:
         order = shopify.get_order(order_id)
@@ -162,25 +161,76 @@ def order_detail(request: Request, order_id: int):
                 "order": None,
                 "active_page": "orders",
                 "active_shop": shop_key,
-                "customer_name": "-",
-                "shipping_method": "-",
             },
             status_code=404,
         )
 
-    # Voor detailpagina proberen we óók pick_klantnaam te tonen als die er is.
-    # Omdat get_order() meestal geen metafields bevat, halen we 1 order verrijkt op via fetch_orders.
-    customer_name = _customer_name(order)
+    # Klantnaam: 1 snelle GraphQL call voor alleen deze order
+    try:
+        customer_name = get_order_pick_name(shop=shop_key, order_id=order_id) or "-"
+    except Exception:
+        customer_name = "-"
+
+    # (optionele) fallback als metafield leeg is
     if customer_name == "-":
+        cust = order.get("customer") or {}
+        ship = order.get("shipping_address") or {}
+        bill = order.get("billing_address") or {}
+
+        first = (cust.get("first_name") or "").strip()
+        last = (cust.get("last_name") or "").strip()
+        full = (first + " " + last).strip()
+        if full:
+            customer_name = full
+        elif (ship.get("name") or "").strip():
+            customer_name = ship["name"].strip()
+        elif (bill.get("name") or "").strip():
+            customer_name = bill["name"].strip()
+
+    # Status
+    financial_status = (order.get("financial_status") or "-").replace("_", " ").title()
+    fulfillment_status = (order.get("fulfillment_status") or "unfulfilled").replace("_", " ").title()
+
+    created_at = order.get("created_at") or "-"
+    currency = order.get("currency") or "EUR"
+
+    def to_float(x):
         try:
-            enriched = fetch_orders(shop=shop_key, limit=50)
-            match = next((o for o in enriched if str(o.get("id")) == str(order_id)), None)
-            if match:
-                customer_name = _customer_name(match)
+            return float(str(x))
         except Exception:
-            pass
+            return 0.0
+
+    subtotal = to_float(order.get("subtotal_price"))
+    tax = to_float(order.get("total_tax"))
+    discounts = to_float(order.get("total_discounts"))
+    total = to_float(order.get("total_price"))
+
+    shipping_lines = order.get("shipping_lines") or []
+    shipping = sum(to_float(sl.get("price")) for sl in shipping_lines)
+
+    # Als subtotal ontbreekt, bereken uit regels
+    if subtotal == 0.0:
+        line_items = order.get("line_items") or []
+        subtotal = sum(to_float(li.get("price")) * int(li.get("quantity") or 0) for li in line_items)
+
+    note = (order.get("note") or "").strip() or None
+    tags = (order.get("tags") or "").strip() or None
 
     shipping_method = _shipping_method(order)
+
+    fulfillments_raw = order.get("fulfillments") or []
+    fulfillments = []
+    for f in fulfillments_raw:
+        fulfillments.append(
+            {
+                "name": f.get("name"),
+                "status": f.get("status"),
+                "created_at": f.get("created_at"),
+                "tracking_company": f.get("tracking_company"),
+                "tracking_numbers": f.get("tracking_numbers") or [],
+                "tracking_urls": f.get("tracking_urls") or [],
+            }
+        )
 
     return templates.TemplateResponse(
         "order_detail.html",
@@ -190,6 +240,22 @@ def order_detail(request: Request, order_id: int):
             "active_page": "orders",
             "active_shop": shop_key,
             "customer_name": customer_name,
+            "status": {
+                "financial": f"Betaling: {financial_status}",
+                "fulfillment": f"Fulfillment: {fulfillment_status}",
+            },
+            "created_at": created_at,
+            "money": {
+                "currency": currency,
+                "subtotal": f"{subtotal:.2f}",
+                "shipping": f"{shipping:.2f}",
+                "discounts": f"{discounts:.2f}",
+                "tax": f"{tax:.2f}",
+                "total": f"{total:.2f}",
+            },
+            "tags": tags,
+            "note": note,
             "shipping_method": shipping_method,
+            "fulfillments": fulfillments,
         },
     )
