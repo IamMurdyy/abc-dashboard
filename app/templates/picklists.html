@@ -42,7 +42,10 @@
             <td>{{ r.qty }}</td>
             <td>{{ r.product_name }}</td>
             <td>€ {{ '%.2f'|format(r.unit_price) }}</td>
-            <td>€ {{ '%.2f'|format(r.order_subtotal) }}</td>
+            <td>{% if r.is_first_in_order %}
+    € {{ '%.2f'|format(r.order_subtotal) }}
+  {% endif %}
+</td>
 
             <td>{% if r.is_first_in_order %}{{ r.shipping_method }}{% endif %}</td>
 

@@ -291,7 +291,7 @@ tbody tr:hover{
 
 /* Qty > 1: hele rij vet */
 .pick-table tr.fw-bold td{
-  font-weight: 800 !important;
+  font-weight: 700 !important;
 }
 
 /* Blank invul vakjes */
@@ -358,7 +358,7 @@ tbody tr:hover{
 
 /* Qty > 1 vet */
 .picklist-page tr.fw-bold td{
-  font-weight: 800 !important;
+  font-weight: 700 !important;
 }
 
 /* ---------------------------------------------------------
@@ -367,7 +367,7 @@ tbody tr:hover{
 @media print {
   @page{
     size: A4 landscape;
-    margin: 8mm;
+    margin: 6mm;
   }
 
   /* Achtergrondkleuren écht meenemen */
@@ -396,18 +396,48 @@ tbody tr:hover{
     max-width: none !important;
   }
 
-  .table-responsive{
-    overflow: visible !important;
-  }
+.table-responsive{
+  overflow: visible !important;
+
+  /* BUITENRAND (betrouwbaar in print) */
+  border: 1px solid #000 !important;
+  padding: 0 !important;
+}
+
 
   /* Header maar 1 keer (niet herhalen) */
   thead{
     display: table-row-group !important;
   }
 
-  .pick-table{
-    font-size: 11px;
-  }
+.pick-table{
+  border-collapse: collapse !important;
+  border: 0 !important;
+}
+/* PRINT: lettergrootte */
+.picklist-page .pick-table td{
+  font-size: 10px !important;
+}
+
+.picklist-page .pick-table th{
+  font-size: 10px !important;
+}
+
+
+
+/* PRINT: rijhoogte / witruimte */
+.picklist-page .pick-table th,
+.picklist-page .pick-table td{
+  padding: 0px 2px !important;       /* bijna 0 boven/onder */
+  line-height: 0.95 !important;      /* strak maar leesbaar */
+  vertical-align: middle !important;
+  border: 1px solid #000 !important;
+}
+
+
+.blank-cell{
+  height: 18px !important;
+}
 
   /* Footer: alleen betrouwbare pagina teller */
   .print-footer{
@@ -445,14 +475,16 @@ tbody tr:hover{
   width: 100%;
 }
 
-.picklist-page .pick-table th,
-.picklist-page .pick-table td{
-  padding: 4px 6px !important;      /* << hier win je het meeste */
-  line-height: 1.1 !important;
-  vertical-align: middle !important;
-  white-space: nowrap;              /* standaard: geen wrap */
-  overflow: hidden;
-  text-overflow: ellipsis;
+@media screen {
+  .picklist-page .pick-table th,
+  .picklist-page .pick-table td{
+    padding: 1.5px 4px !important;
+    line-height: 1.1 !important;
+    vertical-align: middle !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 /* Product mag wél wrappen (anders wordt dat ellipsis-hel) */
@@ -462,10 +494,10 @@ tbody tr:hover{
 }
 /* Picklijst: kolombreedtes (matcht je huidige kolomvolgorde) */
 .picklist-page .pick-table th:nth-child(1),
-.picklist-page .pick-table td:nth-child(1){ width: 70px; }   /* Order */
+.picklist-page .pick-table td:nth-child(1){ width: 40px; }   /* Order */
 
 .picklist-page .pick-table th:nth-child(2),
-.picklist-page .pick-table td:nth-child(2){ width: 160px; }   /* Klant */
+.picklist-page .pick-table td:nth-child(2){ width: 130px; }   /* Klant */
 .picklist-page .pick-table th:nth-child(2),
 .picklist-page .pick-table td:nth-child(2){
   white-space: nowrap !important;
@@ -477,27 +509,40 @@ tbody tr:hover{
 /* MPN – extra strak */
 .picklist-page .pick-table th:nth-child(3),
 .picklist-page .pick-table td:nth-child(3){
-  width: 60px;          /* was 80 */
+  width: 40px;          /* was 80 */
   text-align: right;   /* cijfers staan rustiger rechts */
 }
 
 .picklist-page .pick-table th:nth-child(4),
-.picklist-page .pick-table td:nth-child(4){ width: 55px; }   /* Aantal */
+.picklist-page .pick-table td:nth-child(4){ width: 30px;
+text-align: right;   /* cijfers staan rustiger rechts */ }   /* Aantal */
 
 .picklist-page .pick-table th:nth-child(6),
-.picklist-page .pick-table td:nth-child(6){ width: 70px; }   /* Prijs */
+.picklist-page .pick-table td:nth-child(6){ width: 55px; }   /* Prijs */
 
 .picklist-page .pick-table th:nth-child(7),
-.picklist-page .pick-table td:nth-child(7){ width: 80px; }   /* Subtotaal */
+.picklist-page .pick-table td:nth-child(7){ width: 55px; }   /* Subtotaal */
 
 .picklist-page .pick-table th:nth-child(8),
 .picklist-page .pick-table td:nth-child(8){ width: 95px; }   /* Verzendmethode (smaller) */
 
 .picklist-page .pick-table th:nth-child(9),
-.picklist-page .pick-table td:nth-child(9){ width: 55px; }   /* Inkoop */
+.picklist-page .pick-table td:nth-child(9){ width: 30px; }   /* Inkoop */
 
 .picklist-page .pick-table th:nth-child(10),
-.picklist-page .pick-table td:nth-child(10){ width: 45px; }  /* Uit */
+.picklist-page .pick-table td:nth-child(10){ width: 30px; }  /* Uit */
 
 .picklist-page .pick-table th:nth-child(11),
-.picklist-page .pick-table td:nth-child(11){ width: 90px; }  /* Opmerking */
+.picklist-page .pick-table td:nth-child(11){ width: 50px; }  /* Opmerking */
+
+@media print {
+  .picklist-page .pick-table td:nth-child(5){
+    padding-left: 3px !important;
+  }
+}
+
+@media print {
+  .picklist-page .pick-table td:nth-child(4){
+    padding-right: 3px !important;
+  }
+}
