@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.services.shopify import ShopifyClient
+from app.services.shopify import ShopifyClient, fetch_orders
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -19,7 +19,7 @@ def _shipping_method(order: dict) -> str:
 
 def _customer_name_from_order(order: dict) -> str:
     """
-    Probeer klantnaam te bepalen zonder extra API call.
+    Fallback klantnaam bepalen zonder extra API call.
     """
     customer = order.get("customer") or {}
     shipping_address = order.get("shipping_address") or {}
@@ -59,83 +59,51 @@ def _customer_name_from_order(order: dict) -> str:
         return bfull
 
     # 5) order-level email (staat vaak op order, ook bij guest checkout)
-    order_email = (order.get("email") or "").strip()
+    order_email = (order.get("email") or order.get("contact_email") or "").strip()
     if order_email:
         return order_email
 
-    return ""  # leeg = nog geen resultaat
+    return ""
 
 
-def _customer_name(order: dict, shopify: ShopifyClient, customer_cache: dict) -> str:
+def _customer_name(order: dict) -> str:
     """
-    Definitieve klantnaam: eerst uit order, anders via extra customer call (met cache).
+    Definitieve klantnaam:
+    1) pick_klantnaam (verrijkt door fetch_orders via metafield custom.pick_klantnaam)
+    2) fallback uit order payload
+    3) '-' als alles leeg is
     """
-    # probeer alles uit order payload
+    mf = (order.get("pick_klantnaam") or "").strip()
+    if mf:
+        return mf
+
     name = _customer_name_from_order(order)
     if name:
         return name
 
-    # fallback: customer id -> klant ophalen
-    customer = order.get("customer") or {}
-    customer_id = customer.get("id")
-    if not customer_id:
-        return "-"
-
-    if customer_id in customer_cache:
-        c = customer_cache[customer_id]
-    else:
-        try:
-            c = shopify.get_customer(int(customer_id))
-        except Exception:
-            c = None
-        customer_cache[customer_id] = c
-
-    if not c:
-        return f"Customer #{customer_id}"
-
-    # customer payload is meestal rijker: first/last, company, email
-    first = (c.get("first_name") or "").strip()
-    last = (c.get("last_name") or "").strip()
-    full = (first + " " + last).strip()
-    if full:
-        return full
-
-    default_addr = c.get("default_address") or {}
-    company = (default_addr.get("company") or "").strip()
-    if company:
-        return company
-
-    email = (c.get("email") or "").strip()
-    if email:
-        return email
-
-    return f"Customer #{customer_id}"
+    return "-"
 
 
 @router.get("/orders", response_class=HTMLResponse)
 def orders_page(request: Request):
     shop_key = request.query_params.get("shop") or "abc-led"
 
-    shopify = ShopifyClient(shop_key)
-    try:
-        orders = shopify.list_orders()
-        customer_cache = {}
+    # Belangrijk: fetch_orders verrijkt orders met pick_klantnaam (metafield) via bulk GraphQL
+    orders = fetch_orders(shop=shop_key, limit=50)
 
-        rows = []
-        for o in orders:
-            rows.append(
-                {
-                    "id": o.get("id"),
-                    "name": o.get("name"),
-                    "created_at": o.get("created_at"),
-                    "total_price": o.get("total_price"),
-                    "currency": o.get("currency"),
-                    "customer": _customer_name(o, shopify, customer_cache),
-                    "shipping": _shipping_method(o),
-                }
-            )
-    finally:
-        shopify.close()
+    rows = []
+    for o in orders:
+        rows.append(
+            {
+                "id": o.get("id"),
+                "name": o.get("name"),
+                "created_at": o.get("created_at"),
+                "total_price": o.get("total_price"),
+                "currency": o.get("currency"),
+                "customer": _customer_name(o),
+                "shipping": _shipping_method(o),
+            }
+        )
 
     return templates.TemplateResponse(
         "orders.html",
@@ -156,11 +124,8 @@ def orders_refresh(request: Request):
     shop_key = request.query_params.get("shop") or "abc-led"
 
     try:
-        shopify = ShopifyClient(shop_key=shop_key)
-        try:
-            orders = shopify.list_orders()
-        finally:
-            shopify.close()
+        # Zelfde bron gebruiken als /orders zodat refresh exact hetzelfde gedrag heeft
+        orders = fetch_orders(shop=shop_key, limit=50)
 
         count = len(orders) if orders else 0
         msg = f"Orders opgehaald: {count}"
@@ -182,12 +147,10 @@ def orders_refresh(request: Request):
 def order_detail(request: Request, order_id: int):
     shop_key = request.query_params.get("shop") or "abc-led"
 
+    # Detail houden we zoals je had: via ShopifyClient order ophalen
     shopify = ShopifyClient(shop_key)
     try:
         order = shopify.get_order(order_id)
-        customer_cache = {}
-        customer_name = "-" if not order else _customer_name(order, shopify, customer_cache)
-        shipping_method = "-" if not order else _shipping_method(order)
     finally:
         shopify.close()
 
@@ -204,6 +167,20 @@ def order_detail(request: Request, order_id: int):
             },
             status_code=404,
         )
+
+    # Voor detailpagina proberen we óók pick_klantnaam te tonen als die er is.
+    # Omdat get_order() meestal geen metafields bevat, halen we 1 order verrijkt op via fetch_orders.
+    customer_name = _customer_name(order)
+    if customer_name == "-":
+        try:
+            enriched = fetch_orders(shop=shop_key, limit=50)
+            match = next((o for o in enriched if str(o.get("id")) == str(order_id)), None)
+            if match:
+                customer_name = _customer_name(match)
+        except Exception:
+            pass
+
+    shipping_method = _shipping_method(order)
 
     return templates.TemplateResponse(
         "order_detail.html",
