@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Tuple
 
 PICKUP_TITLE = "Afhalen in de winkel"
-RED_TITLES = {"Pakket Belgie", "Pakket", "Package Europe"}
+RED_TITLES = {"Pakket Belgie", "Pakket", "Package Europe", "Package Germany", "PostNL afhaallocatie"}
 
 PICKUP_ALIASES = {
     "stephensonweg",  # vangt "Stephensonweg 4A"
