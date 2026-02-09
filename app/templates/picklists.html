@@ -6,7 +6,7 @@
   <div class="picklist-header d-flex justify-content-between align-items-center mb-3">
     <div>
       <h1 class="h4 mb-1">Picklijsten</h1>
-      <div class="text-muted small">Shop: <b>{{ shop }}</b> • Regels: <b>{{ row_count }}</b></div>
+      <div class="text-muted small">Shop: <b>{{ shop }}</b> • Bestellingen: <b>{{ aantal_bestellingen }}</b></div>
     </div>
 
     <div class="d-flex gap-2">
@@ -42,10 +42,11 @@
             <td>{{ r.qty }}</td>
             <td>{{ r.product_name }}</td>
             <td>€ {{ '%.2f'|format(r.unit_price) }}</td>
-            <td>{% if r.is_first_in_order %}
-    € {{ '%.2f'|format(r.order_subtotal) }}
-  {% endif %}
-</td>
+            <td>
+              {% if r.is_first_in_order %}
+                € {{ '%.2f'|format(r.order_subtotal) }}
+              {% endif %}
+            </td>
 
             <td>{% if r.is_first_in_order %}{{ r.shipping_method }}{% endif %}</td>
 

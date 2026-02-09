@@ -88,8 +88,9 @@ def _customer_name(order: dict) -> str:
 def orders_page(request: Request):
     shop_key = request.query_params.get("shop") or "abc-led"
 
-    # Belangrijk: fetch_orders verrijkt orders met pick_klantnaam (metafield) via bulk GraphQL
-    orders = fetch_orders(shop=shop_key, limit=50)
+    # UI: haal meer dan 50 op, maar cap zodat de pagina snel blijft.
+    # (Picklijsten doen we straks zonder cap.)
+    orders = fetch_orders(shop=shop_key, limit=100, max_total=300)
 
     rows = []
     for o in orders:
@@ -125,8 +126,7 @@ def orders_refresh(request: Request):
 
     try:
         # Zelfde bron gebruiken als /orders zodat refresh exact hetzelfde gedrag heeft
-        orders = fetch_orders(shop=shop_key, limit=50)
-
+        orders = fetch_orders(shop=shop_key, limit=100, max_total=300)
         count = len(orders) if orders else 0
         msg = f"Orders opgehaald: {count}"
 
@@ -246,15 +246,15 @@ def order_detail(request: Request, order_id: int):
             },
             "created_at": created_at,
             "money": {
+                "subtotal": subtotal,
+                "shipping": shipping,
+                "tax": tax,
+                "discounts": discounts,
+                "total": total,
                 "currency": currency,
-                "subtotal": f"{subtotal:.2f}",
-                "shipping": f"{shipping:.2f}",
-                "discounts": f"{discounts:.2f}",
-                "tax": f"{tax:.2f}",
-                "total": f"{total:.2f}",
             },
-            "tags": tags,
             "note": note,
+            "tags": tags,
             "shipping_method": shipping_method,
             "fulfillments": fulfillments,
         },

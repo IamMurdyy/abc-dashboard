@@ -1,4 +1,9 @@
 import os
+import re
+import time
+import random
+from urllib.parse import urlparse, parse_qs
+
 import requests
 
 
@@ -64,33 +69,134 @@ class ShopifyClient:
             pass
 
     # -------------------------
+    # Rate-limit safe request
+    # -------------------------
+
+    def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        params=None,
+        json=None,
+        timeout: int = 30,
+        max_retries: int = 6,
+    ):
+        """
+        Rate-limit & transient-error safe request.
+
+        - 429: wacht (Retry-After of exponential backoff + jitter) en retry
+        - 5xx: korte backoff en retry
+        - overige 4xx: raise direct
+        """
+        last_response = None
+
+        for attempt in range(max_retries):
+            r = self.session.request(method, url, params=params, json=json, timeout=timeout)
+            last_response = r
+
+            # success
+            if r.status_code < 400:
+                return r
+
+            # 429 Too Many Requests
+            if r.status_code == 429:
+                retry_after = r.headers.get("Retry-After")
+                if retry_after:
+                    try:
+                        sleep_s = float(retry_after)
+                    except Exception:
+                        sleep_s = 1.5
+                else:
+                    # exponential backoff + jitter
+                    sleep_s = min(10.0, 0.7 * (2 ** attempt)) + random.uniform(0.0, 0.5)
+
+                time.sleep(sleep_s)
+                continue
+
+            # transient server errors
+            if 500 <= r.status_code < 600:
+                sleep_s = min(8.0, 0.5 * (2 ** attempt)) + random.uniform(0.0, 0.4)
+                time.sleep(sleep_s)
+                continue
+
+            # other 4xx: don't retry
+            r.raise_for_status()
+
+        # retries exhausted
+        if last_response is not None:
+            last_response.raise_for_status()
+
+        raise RuntimeError("Shopify request failed after retries (no response).")
+
+    # -------------------------
     # REST helpers
     # -------------------------
 
-    def list_orders(self, limit: int = 50):
+    @staticmethod
+    def _extract_next_from_link_header(link_header: str) -> str | None:
         """
-        Paid + unfulfilled
+        Shopify REST cursor pagination:
+        Link: <https://.../orders.json?limit=50&page_info=XYZ>; rel="next", <...>; rel="previous"
+        """
+        if not link_header:
+            return None
+        m = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
+        return m.group(1) if m else None
+
+    def list_orders(self, limit: int = 50, max_total: int | None = None):
+        """
+        Paid + unfulfilled (ALLE pagina's ophalen via Link-header pagination)
+
+        Args:
+            limit: batch size per request
+            max_total: optionele cap (bv 300 voor UI). None = alles ophalen.
+
+        Returns:
+            List[dict] orders
         """
         url = f"{self.base_url}/orders.json"
         params = {
             "status": "open",
             "financial_status": "paid",
             "fulfillment_status": "unfulfilled",
-            "limit": limit,
+            "limit": int(limit),
         }
-        r = self.session.get(url, params=params, timeout=30)
-        r.raise_for_status()
-        data = r.json()
-        return data.get("orders", [])
+
+        all_orders: list[dict] = []
+
+        next_url = url
+        next_params: dict | None = params
+
+        while True:
+            r = self._request("GET", next_url, params=next_params, timeout=30)
+            data = r.json() or {}
+            batch = data.get("orders", []) or []
+            all_orders.extend(batch)
+
+            if max_total is not None and len(all_orders) >= max_total:
+                return all_orders[:max_total]
+
+            link = r.headers.get("Link") or r.headers.get("link") or ""
+            next_full = self._extract_next_from_link_header(link)
+            if not next_full:
+                break
+
+            parsed = urlparse(next_full)
+            next_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+
+            qs = parse_qs(parsed.query)
+            next_params = {k: v[0] for k, v in qs.items()}
+
+        return all_orders
 
     def get_order(self, order_id: int):
         """
         Haal 1 order op (incl. regels)
         """
         url = f"{self.base_url}/orders/{order_id}.json"
-        r = self.session.get(url, timeout=30)
-        r.raise_for_status()
-        data = r.json()
+        r = self._request("GET", url, timeout=30)
+        data = r.json() or {}
         return data.get("order")
 
     def get_customer(self, customer_id: int):
@@ -98,9 +204,8 @@ class ShopifyClient:
         Haal 1 klant op (voor B2B company / naam) - gebruiken we als fallback voor de orderlijst.
         """
         url = f"{self.base_url}/customers/{customer_id}.json"
-        r = self.session.get(url, timeout=30)
-        r.raise_for_status()
-        data = r.json()
+        r = self._request("GET", url, timeout=30)
+        data = r.json() or {}
         return data.get("customer")
 
     # -------------------------
@@ -113,10 +218,10 @@ class ShopifyClient:
         """
         url = f"https://{self.shop}/admin/api/{self.version}/graphql.json"
         payload = {"query": query, "variables": variables or {}}
-        r = self.session.post(url, json=payload, timeout=30)
-        r.raise_for_status()
 
+        r = self._request("POST", url, json=payload, timeout=30)
         data = r.json() or {}
+
         if data.get("errors"):
             raise RuntimeError(f"GraphQL errors: {data['errors']}")
         return data.get("data") or {}
@@ -164,10 +269,14 @@ def fetch_order_pick_names(client: ShopifyClient, order_ids: list[int]) -> dict[
     return out
 
 
-def fetch_orders(shop: str = "abc-led", limit: int = 50):
+def fetch_orders(shop: str = "abc-led", limit: int = 50, max_total: int | None = None):
+    """
+    Haalt paid+unfulfilled orders op. Met paginering + rate-limit safe requests.
+    - max_total: None = alles; of bv 300 voor UI.
+    """
     client = ShopifyClient(shop_key=shop)
     try:
-        orders = client.list_orders(limit=limit)
+        orders = client.list_orders(limit=limit, max_total=max_total)
 
         # 1) Metafield namen in bulk ophalen en toevoegen aan orders
         order_ids = [int(o["id"]) for o in orders if o.get("id")]
@@ -227,6 +336,7 @@ def fetch_orders(shop: str = "abc-led", limit: int = 50):
         return orders
     finally:
         client.close()
+
 
 def fetch_order_pick_name(client: ShopifyClient, order_id: int) -> str | None:
     """
