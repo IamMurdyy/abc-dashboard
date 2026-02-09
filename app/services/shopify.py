@@ -144,6 +144,56 @@ class ShopifyClient:
         m = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
         return m.group(1) if m else None
 
+    @staticmethod
+    def _extract_page_info(next_full_url: str) -> str | None:
+        """
+        Haal page_info uit de volledige next url.
+        """
+        if not next_full_url:
+            return None
+        parsed = urlparse(next_full_url)
+        qs = parse_qs(parsed.query)
+        vals = qs.get("page_info")
+        if not vals:
+            return None
+        return vals[0]
+
+    def list_orders_page(self, limit: int = 50, page_info: str | None = None):
+        """
+        Haal EXACT 1 pagina orders op + next cursor.
+
+        Shopify cursor pagination:
+        - eerste pagina: filters + order + limit
+        - volgende pagina's: ALLEEN page_info + limit (geen extra filters)
+        """
+        url = f"{self.base_url}/orders.json"
+
+        if page_info:
+            # Cursor-based: alleen limit + page_info (geen filters, geen order)
+            params = {
+                "limit": int(limit),
+                "page_info": page_info,
+            }
+        else:
+            # Eerste pagina: filters + vaste sortering (consistente volgorde)
+            params = {
+                "status": "open",
+                "financial_status": "paid",
+                "fulfillment_status": "unfulfilled",
+                "order": "created_at desc",
+                "limit": int(limit),
+            }
+
+        r = self._request("GET", url, params=params, timeout=30)
+        data = r.json() or {}
+        orders = data.get("orders", []) or []
+
+        link = r.headers.get("Link") or r.headers.get("link") or ""
+        next_full = self._extract_next_from_link_header(link)
+        next_page_info = self._extract_page_info(next_full) if next_full else None
+
+        return orders, next_page_info
+
     def list_orders(self, limit: int = 50, max_total: int | None = None):
         """
         Paid + unfulfilled (ALLE pagina's ophalen via Link-header pagination)
@@ -160,6 +210,7 @@ class ShopifyClient:
             "status": "open",
             "financial_status": "paid",
             "fulfillment_status": "unfulfilled",
+            "order": "created_at desc",
             "limit": int(limit),
         }
 

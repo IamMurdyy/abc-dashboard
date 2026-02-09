@@ -1,8 +1,12 @@
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from app.services.shopify import ShopifyClient, fetch_orders, get_order_pick_name
+from app.services.shopify import (
+    ShopifyClient,
+    get_order_pick_name,
+    fetch_order_pick_names,  # <-- komt zo meteen in shopify.py erbij (of exporten)
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -69,7 +73,7 @@ def _customer_name_from_order(order: dict) -> str:
 def _customer_name(order: dict) -> str:
     """
     Definitieve klantnaam:
-    1) pick_klantnaam (verrijkt door fetch_orders via metafield custom.pick_klantnaam)
+    1) pick_klantnaam (verrijkt via bulk GraphQL per batch)
     2) fallback uit order payload
     3) '-' als alles leeg is
     """
@@ -84,33 +88,60 @@ def _customer_name(order: dict) -> str:
     return "-"
 
 
+def _map_order_row(o: dict) -> dict:
+    return {
+        "id": o.get("id"),
+        "name": o.get("name"),
+        "created_at": o.get("created_at"),
+        "total_price": o.get("total_price"),
+        "currency": o.get("currency"),
+        "customer": _customer_name(o),
+        "shipping": _shipping_method(o),
+    }
+
+
+def _enrich_pick_names(client: ShopifyClient, orders: list[dict]) -> None:
+    """
+    Zet order["pick_klantnaam"] op basis van Flow metafield custom.pick_klantnaam
+    (bulk GraphQL per batch, dus snel).
+    """
+    order_ids = [int(o["id"]) for o in orders if o.get("id")]
+    if not order_ids:
+        return
+
+    try:
+        pick_names = fetch_order_pick_names(client, order_ids)
+    except Exception:
+        pick_names = {}
+
+    if not pick_names:
+        return
+
+    for o in orders:
+        oid = o.get("id")
+        if oid in pick_names:
+            o["pick_klantnaam"] = pick_names[oid]
+
+
 @router.get("/orders", response_class=HTMLResponse)
 def orders_page(request: Request):
     shop_key = request.query_params.get("shop") or "abc-led"
 
-    # UI: haal meer dan 50 op, maar cap zodat de pagina snel blijft.
-    # (Picklijsten doen we straks zonder cap.)
-    orders = fetch_orders(shop=shop_key, limit=100, max_total=300)
+    client = ShopifyClient(shop_key)
+    try:
+        orders, next_page_info = client.list_orders_page(limit=50, page_info=None)
+        _enrich_pick_names(client, orders)
+    finally:
+        client.close()
 
-    rows = []
-    for o in orders:
-        rows.append(
-            {
-                "id": o.get("id"),
-                "name": o.get("name"),
-                "created_at": o.get("created_at"),
-                "total_price": o.get("total_price"),
-                "currency": o.get("currency"),
-                "customer": _customer_name(o),
-                "shipping": _shipping_method(o),
-            }
-        )
+    rows = [_map_order_row(o) for o in orders]
 
     return templates.TemplateResponse(
         "orders.html",
         {
             "request": request,
             "orders": rows,
+            "next_page_info": next_page_info,  # <-- nodig voor "Laad meer"
             "active_page": "orders",
             "active_shop": shop_key,
             "shops": [
@@ -120,27 +151,43 @@ def orders_page(request: Request):
     )
 
 
+@router.get("/orders/more")
+def orders_more(request: Request):
+    shop_key = request.query_params.get("shop") or "abc-led"
+    page_info = (request.query_params.get("page_info") or "").strip()
+
+    if not page_info:
+        return JSONResponse({"orders": [], "next_page_info": None})
+
+    client = ShopifyClient(shop_key)
+    try:
+        orders, next_page_info = client.list_orders_page(limit=50, page_info=page_info)
+        _enrich_pick_names(client, orders)
+    finally:
+        client.close()
+
+    rows = [_map_order_row(o) for o in orders]
+
+    return JSONResponse(
+        {
+            "orders": rows,
+            "next_page_info": next_page_info,
+        }
+    )
+
+
 @router.get("/orders/refresh")
 def orders_refresh(request: Request):
+    """
+    Refresh doet geen zware Shopify calls meer.
+    We herladen gewoon /orders (die laadt altijd de eerste pagina).
+    """
     shop_key = request.query_params.get("shop") or "abc-led"
 
-    try:
-        # Zelfde bron gebruiken als /orders zodat refresh exact hetzelfde gedrag heeft
-        orders = fetch_orders(shop=shop_key, limit=100, max_total=300)
-        count = len(orders) if orders else 0
-        msg = f"Orders opgehaald: {count}"
-
-        return RedirectResponse(
-            url=f"/orders?shop={shop_key}&toast={msg}&toast_type=success",
-            status_code=303,
-        )
-
-    except Exception:
-        msg = "Fout bij ophalen orders"
-        return RedirectResponse(
-            url=f"/orders?shop={shop_key}&toast={msg}&toast_type=error",
-            status_code=303,
-        )
+    return RedirectResponse(
+        url=f"/orders?shop={shop_key}&toast=Orders%20ververst&toast_type=success",
+        status_code=303,
+    )
 
 
 @router.get("/orders/{order_id:int}", response_class=HTMLResponse)
@@ -246,15 +293,15 @@ def order_detail(request: Request, order_id: int):
             },
             "created_at": created_at,
             "money": {
-                "subtotal": subtotal,
-                "shipping": shipping,
-                "tax": tax,
-                "discounts": discounts,
-                "total": total,
                 "currency": currency,
+                "subtotal": f"{subtotal:.2f}",
+                "shipping": f"{shipping:.2f}",
+                "discounts": f"{discounts:.2f}",
+                "tax": f"{tax:.2f}",
+                "total": f"{total:.2f}",
             },
-            "note": note,
             "tags": tags,
+            "note": note,
             "shipping_method": shipping_method,
             "fulfillments": fulfillments,
         },

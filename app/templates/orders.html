@@ -2,56 +2,181 @@
 {% block title %}Orders | ABC Dashboard{% endblock %}
 
 {% block content %}
-  <section class="page-header">
-    <div>
-      <h1>Orders</h1>
-      <p class="muted">Paid & unfulfilled – {{ active_shop | upper }}</p>
-    </div>
-
-    <div class="actions">
-<a class="btn primary" href="/orders/refresh{% if active_shop %}?shop={{ active_shop }}{% endif %}">
-  Orders ophalen
-</a>
-
-    </div>
-  </section>
-
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Order</th>
-          <th>Klant</th>
-          <th>Verzending</th>
-          <th>Aangemaakt</th>
-          <th>Totaal</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for o in orders %}
-        <tr class="clickable-row" data-href="/orders/{{ o.id }}?shop={{ active_shop }}">
-          <td>{{ o.name }}</td>
-          <td>{{ o.customer }}</td>
-          <td>{{ o.shipping }}</td>
-          <td>{{ o.created_at }}</td>
-          <td>{{ o.total_price }} {{ o.currency }}</td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="5" class="muted">Geen orders gevonden.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<section class="page-header">
+  <div>
+    <h1>Orders</h1>
+    <p class="muted">Paid & unfulfilled – {{ active_shop | upper }}</p>
   </div>
 
-  <script>
+  <div class="actions">
+    <a class="btn primary" href="/orders/refresh?shop={{ active_shop }}">
+      Orders ophalen
+    </a>
+  </div>
+</section>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Order</th>
+        <th>Klant</th>
+        <th>Verzending</th>
+        <th>Aangemaakt</th>
+        <th>Totaal</th>
+      </tr>
+    </thead>
+    <tbody id="orders-body">
+      {% for o in orders %}
+      <tr class="clickable-row" data-href="/orders/{{ o.id }}?shop={{ active_shop }}">
+        <td>{{ o.name }}</td>
+        <td>{{ o.customer }}</td>
+        <td>{{ o.shipping }}</td>
+        <td>{{ o.created_at }}</td>
+        <td>{{ o.total_price }} {{ o.currency }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" class="muted">Geen orders gevonden.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if next_page_info %}
+<div class="actions" style="margin-top: 1rem; display: flex; flex-direction: column; gap: .5rem;">
+  <div style="display:flex; gap:.5rem; align-items:center;">
+    <button
+      id="load-more"
+      class="btn"
+      data-page-info="{{ next_page_info }}"
+    >
+      Laad meer
+    </button>
+
+    <span id="load-more-status" class="muted" style="display:none;"></span>
+  </div>
+
+  <div id="load-more-error" class="muted" style="display:none;"></div>
+</div>
+{% endif %}
+
+<script>
+  function bindRowClicks() {
     document.querySelectorAll("tr.clickable-row").forEach((row) => {
       row.style.cursor = "pointer";
-      row.addEventListener("click", () => {
+      row.onclick = () => {
         const href = row.dataset.href;
         if (href) window.location.href = href;
-      });
+      };
     });
-  </script>
+  }
+
+  function showError(msg) {
+    const el = document.getElementById("load-more-error");
+    if (!el) return;
+    el.style.display = "block";
+    el.style.color = "inherit";
+    el.textContent = msg;
+  }
+
+  function clearError() {
+    const el = document.getElementById("load-more-error");
+    if (!el) return;
+    el.style.display = "none";
+    el.textContent = "";
+  }
+
+  function setStatus(msg) {
+    const el = document.getElementById("load-more-status");
+    if (!el) return;
+    if (!msg) {
+      el.style.display = "none";
+      el.textContent = "";
+      return;
+    }
+    el.style.display = "inline";
+    el.textContent = msg;
+  }
+
+  bindRowClicks();
+
+  const loadMoreBtn = document.getElementById("load-more");
+  let isLoading = false;
+
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener("click", async () => {
+      if (isLoading) return;
+      isLoading = true;
+
+      clearError();
+
+      const pageInfo = loadMoreBtn.dataset.pageInfo;
+      const originalText = loadMoreBtn.innerText;
+
+      loadMoreBtn.disabled = true;
+      loadMoreBtn.innerText = "Laden...";
+      setStatus("Bezig met ophalen...");
+
+      try {
+        const url = `/orders/more?shop={{ active_shop }}&page_info=${encodeURIComponent(pageInfo)}`;
+        const res = await fetch(url, { method: "GET" });
+
+        if (!res.ok) {
+          // Probeer een nuttige boodschap te geven zonder te crashen
+          let detail = "";
+          try {
+            const txt = await res.text();
+            detail = txt ? ` (${txt.slice(0, 120)})` : "";
+          } catch (_) {}
+          throw new Error(`Serverfout ${res.status}${detail}`);
+        }
+
+        const data = await res.json();
+
+        if (!data || !Array.isArray(data.orders)) {
+          throw new Error("Onverwachte response van server.");
+        }
+
+        const tbody = document.getElementById("orders-body");
+
+        data.orders.forEach((o) => {
+          const tr = document.createElement("tr");
+          tr.className = "clickable-row";
+          tr.dataset.href = `/orders/${o.id}?shop={{ active_shop }}`;
+          tr.innerHTML = `
+            <td>${o.name ?? ""}</td>
+            <td>${o.customer ?? ""}</td>
+            <td>${o.shipping ?? ""}</td>
+            <td>${o.created_at ?? ""}</td>
+            <td>${o.total_price ?? ""} ${o.currency ?? ""}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        bindRowClicks();
+
+        if (data.next_page_info) {
+          loadMoreBtn.dataset.pageInfo = data.next_page_info;
+          loadMoreBtn.disabled = false;
+          loadMoreBtn.innerText = originalText;
+          setStatus("");
+        } else {
+          // klaar
+          loadMoreBtn.remove();
+          setStatus("Alles geladen.");
+        }
+      } catch (err) {
+        console.error(err);
+        showError("Kon geen extra orders laden. Probeer het over een paar seconden opnieuw.");
+        loadMoreBtn.disabled = false;
+        loadMoreBtn.innerText = originalText;
+        setStatus("");
+      } finally {
+        isLoading = false;
+      }
+    });
+  }
+</script>
 {% endblock %}
